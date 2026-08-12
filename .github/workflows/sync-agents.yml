@@ -143,7 +143,7 @@ jobs:
                 const body = [
                   'This repository receives `AGENTS.md` from the central resume-engineering template.',
                   '',
-                  `This PR updates the consumer repository to the canonical version from template commit \\`${templateSha}\\`.`,
+                  `This PR updates the consumer repository to the canonical version from template commit \`${templateSha}\`.`,
                   '',
                   'Only `AGENTS.md` has been changed. Please review the instructions before merging.',
                 ].join('\n');

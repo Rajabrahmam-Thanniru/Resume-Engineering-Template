@@ -54,3 +54,28 @@ pdflatex -interaction=nonstopmode -halt-on-error -output-directory=tmp resume.te
 For a tailored resume, run the compiler from the template directory and use an output directory such as `output/<job-name>`. Use `latexmk -pdf -outdir=output` when available.
 
 Do not treat a successful compilation as sufficient: render the PDF and inspect the page visually.
+
+## Requirements-first and output naming
+
+Before generating or editing a resume, inspect the project, read the applicable JD, analyze requirements, and map them to verified evidence. Do not start LaTeX generation until unsupported requirements are recorded.
+
+Use the verified person's name in normalized form:
+
+```text
+Alex Morgan -> Alex_Morgan_Resume.pdf
+```
+
+Keep outputs isolated:
+
+```text
+output/Alex_Morgan_Resume.pdf
+output/acme-fullstack/Alex_Morgan_Resume.tex
+output/acme-fullstack/Alex_Morgan_Resume.pdf
+```
+
+Job folders distinguish targets, while the filename identifies the person. Check for an existing target path before writing and never silently overwrite it; use explicit approval, a version suffix, or a new job folder.
+
+## Dependency preflight
+
+Before compiling, check the required LaTeX engine, latexmk when used, and Perl when required. If every required command is available, skip installation completely. If anything is missing, list the missing commands, request permission, and install only the dependencies that provide those commands. Never reinstall or upgrade already-satisfied dependencies.
+

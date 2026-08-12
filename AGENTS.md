@@ -1088,3 +1088,124 @@ If the distribution is not listed, use its official package manager to install T
 Run compilation from the repository root so local `sections/` paths resolve correctly. Prefer `latexmk -pdf` when available; otherwise run the selected LaTeX engine twice when cross-references or hyperlinks are present. Render the PDF and visually inspect it after compilation.
 
 Do not automatically install dependencies during ordinary resume tailoring. Report what is missing and ask for permission before using `sudo`, an elevated shell, a package manager, or an installer.
+
+# 28. Requirements Preflight and Output Naming
+
+Before creating or modifying any resume, perform a requirements preflight.
+
+## Preflight order
+
+1. Inspect the current repository structure and relevant files.
+2. Read `AGENTS.md`, `README.md`, the Master Resume, and the applicable knowledge files.
+3. If tailoring, read the target JD before editing any resume content.
+4. Extract JD requirements, responsibilities, preferred skills, experience expectations, and keywords.
+5. Map requirements to evidence and classify each match.
+6. Record unsupported requirements.
+7. Decide the target output path and filename before creating the tailored document.
+8. Only then create or modify the job-specific LaTeX and compile it.
+
+Do not begin resume generation before the requirements analysis and evidence mapping are complete.
+
+## Filename convention
+
+Use the person's verified name, normalized with underscores, followed by `_Resume`:
+
+```text
+<Person_Name>_Resume.pdf
+<Person_Name>_Resume.tex
+```
+
+For example, a person named `Alex Morgan` uses:
+
+```text
+Alex_Morgan_Resume.pdf
+Alex_Morgan_Resume.tex
+```
+
+Do not use a placeholder name in a real person's output. Do not infer a person's name from an email address or job description; use the verified name from the source resume or user confirmation.
+
+## Output isolation
+
+The Master Resume and every tailored resume must be isolated and must not overwrite one another:
+
+```text
+output/
+├── <Person_Name>_Resume.pdf                 # Master Resume output
+└── <job-name>/
+    ├── <Person_Name>_Resume.tex             # Tailored source
+    ├── <Person_Name>_Resume.pdf             # Tailored PDF
+    └── ...                                  # Optional job-specific QA files
+```
+
+The job folder name must be stable and filesystem-safe, for example `acme-fullstack-engineer` or `frontend-platform-role`. The filename distinguishes the person; the folder distinguishes the job target.
+
+## Collision protection
+
+Before writing a PDF or `.tex` file:
+
+- Check whether the exact target path already exists.
+- Never silently overwrite an existing resume.
+- If it exists, ask whether to replace it, create a versioned filename such as `<Person_Name>_Resume_v2.pdf`, or create a timestamped job folder.
+- Keep the original file unchanged when creating a new version.
+- Confirm the final path in the report.
+
+A successful compile is not permission to replace an existing output. Path selection and overwrite approval are separate checks.
+
+## Verification report
+
+Every build report must include:
+
+- the verified person name used in the filename
+- the job folder, if applicable
+- the exact `.tex` and `.pdf` paths
+- confirmation that the Master Resume was not modified during JD tailoring
+- confirmation that no existing output was silently replaced
+
+# 29. Dependency Preflight: Install Only When Missing
+
+Before compiling, perform a dependency preflight. The required tools are the selected LaTeX engine (`pdflatex`, `xelatex`, or `lualatex`), `latexmk` when the workflow uses it, and Perl when `latexmk` requires it.
+
+Use this decision rule:
+
+```text
+Check every required command
+        ↓
+All required commands present?
+   ├── Yes → report "dependencies satisfied" and do not install anything
+   └── No  → list only missing commands, request permission, install only those missing dependencies
+```
+
+Do not reinstall, upgrade, or replace a dependency that is already available. Do not run a package manager merely because it is listed in this file. After a permitted installation, re-run the checks and continue only when all required tools pass.
+
+The preflight must also check the requested output path before generation. Dependency installation and output-file overwrite approval are separate decisions.
+
+Example PowerShell preflight:
+
+```powershell
+$required = @('pdflatex', 'perl')
+$missing = @($required | Where-Object { -not (Get-Command $_ -ErrorAction SilentlyContinue) })
+if ($missing.Count -eq 0) {
+    Write-Output 'Dependencies satisfied; skipping installation.'
+} else {
+    Write-Output ('Missing dependencies: ' + ($missing -join ', '))
+    # Ask for permission, then install only the packages that provide $missing.
+}
+```
+
+Example POSIX-shell preflight:
+
+```bash
+required=(pdflatex perl)
+missing=()
+for command_name in "${required[@]}"; do
+  command -v "$command_name" >/dev/null 2>&1 || missing+=("$command_name")
+done
+if [ "${#missing[@]}" -eq 0 ]; then
+  echo "Dependencies satisfied; skipping installation."
+else
+  printf 'Missing dependencies: %s\n' "${missing[*]}"
+  # Ask for permission, then install only the packages that provide the missing commands.
+fi
+```
+
+If a command is installed outside `PATH`, verify it using its explicit path before deciding it is missing. A present executable is satisfied even when it is not on `PATH`.

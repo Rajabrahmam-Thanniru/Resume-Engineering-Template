@@ -79,3 +79,7 @@ Job folders distinguish targets, while the filename identifies the person. Check
 
 Before compiling, check the required LaTeX engine, latexmk when used, and Perl when required. If every required command is available, skip installation completely. If anything is missing, list the missing commands, request permission, and install only the dependencies that provide those commands. Never reinstall or upgrade already-satisfied dependencies.
 
+
+## Central AGENTS.md policy
+
+This template centrally maintains `AGENTS.md`. Consumer repositories receive updates through reviewable Pull Requests. Add consumers to `.github/template-consumers.yml`; see `SYNC-AGENTS.md` for permissions, security, testing, and the update lifecycle. Local consumer edits to `AGENTS.md` may be overwritten by a future synchronization PR, while all other files remain outside the automation's scope.

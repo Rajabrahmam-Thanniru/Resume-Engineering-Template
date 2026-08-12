@@ -1209,3 +1209,17 @@ fi
 ```
 
 If a command is installed outside `PATH`, verify it using its explicit path before deciding it is missing. A present executable is satisfied even when it is not on `PATH`.
+
+# 30. Central AGENTS.md Synchronization
+
+This template repository is the source of truth for `AGENTS.md`. Consumer repositories receive updates through automated Pull Requests; the action never overwrites consumer work directly.
+
+- Register consumers in `.github/template-consumers.yml` as `owner/repository` entries.
+- `.github/workflows/sync-agents.yml` runs when the canonical `AGENTS.md` changes on the default branch or through manual `workflow_dispatch`.
+- The action compares only `AGENTS.md`, creates or updates `chore/sync-agents-md`, and opens or updates one Pull Request per consumer.
+- Local modifications to a consumer's `AGENTS.md` may be overwritten by a future synchronization PR.
+- Other consumer files are outside the automation's scope.
+- Configure `TEMPLATE_SYNC_TOKEN` only when the default workflow token cannot access registered private or cross-repository consumers; never hard-code tokens.
+- Required consumer permissions are Contents read/write and Pull requests read/write. The template requires Contents read.
+
+See `SYNC-AGENTS.md` for registration, security, testing, and manual synchronization instructions.

@@ -1,0 +1,3 @@
+# Register repositories that should receive the canonical AGENTS.md.
+# Use fully qualified owner/repository names.
+repositories: []

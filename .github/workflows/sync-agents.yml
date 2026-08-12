@@ -1,0 +1,171 @@
+name: Sync AGENTS.md
+
+on:
+  push:
+    paths:
+      - AGENTS.md
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    if: github.event_name == 'workflow_dispatch' || github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Synchronize canonical AGENTS.md
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.TEMPLATE_SYNC_TOKEN || github.token }}
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const branchName = 'chore/sync-agents-md';
+            const commitMessage = 'chore: sync AGENTS.md from template';
+            const prTitle = commitMessage;
+            const summary = { updated: [], current: [], skipped: [] };
+
+            function parseRegistry(text) {
+              return [...text.matchAll(/^\s*-\s*([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)(?:\s+#.*)?\s*$/gm)]
+                .map(match => match[1].trim())
+                .filter(Boolean);
+            }
+
+            function contentOf(response) {
+              if (!response?.data?.content) return null;
+              return Buffer.from(response.data.content, 'base64').toString('utf8');
+            }
+
+            async function getFile(repository, path, ref) {
+              try {
+                return await github.rest.repos.getContent({
+                  owner: repository.owner,
+                  repo: repository.repo,
+                  path,
+                  ref,
+                });
+              } catch (error) {
+                if (error.status === 404) return null;
+                throw error;
+              }
+            }
+
+            const templateFile = await getFile({ owner, repo }, 'AGENTS.md', context.ref.replace('refs/heads/', ''));
+            if (!templateFile || Array.isArray(templateFile.data)) {
+              core.setFailed('Canonical AGENTS.md could not be read from the template repository.');
+              return;
+            }
+            const canonical = contentOf(templateFile);
+            const templateSha = context.sha;
+            const registryFile = await getFile({ owner, repo }, '.github/template-consumers.yml', context.ref.replace('refs/heads/', ''));
+            const consumers = registryFile ? parseRegistry(contentOf(registryFile)) : [];
+
+            for (const fullName of consumers) {
+              const [consumerOwner, consumerRepo, extra] = fullName.split('/');
+              if (!consumerOwner || !consumerRepo || extra) {
+                summary.skipped.push(`${fullName}: invalid owner/repository entry`);
+                continue;
+              }
+              const consumer = { owner: consumerOwner, repo: consumerRepo };
+              try {
+                const repoInfo = await github.rest.repos.get(consumer);
+                const defaultBranch = repoInfo.data.default_branch;
+                const currentFile = await getFile(consumer, 'AGENTS.md', defaultBranch);
+                if (contentOf(currentFile) === canonical) {
+                  summary.current.push(fullName);
+                  continue;
+                }
+
+                const existing = await github.rest.pulls.list({
+                  ...consumer,
+                  state: 'open',
+                  head: `${consumerOwner}:${branchName}`,
+                  base: defaultBranch,
+                  per_page: 10,
+                });
+
+                let branchExists = true;
+                try {
+                  await github.rest.git.getRef({ ...consumer, ref: `heads/${branchName}` });
+                } catch (error) {
+                  if (error.status !== 404) throw error;
+                  branchExists = false;
+                }
+
+                // A branch with this name but no matching synchronization PR
+                // could belong to a person. Never repurpose it.
+                if (branchExists && existing.data.length === 0) {
+                  summary.skipped.push(`${fullName}: ${branchName} exists without an open synchronization PR`);
+                  continue;
+                }
+
+                // Existing PRs are safe to update only when they have changed
+                // the one centrally managed file. This prevents accidental
+                // commits onto a branch containing consumer work.
+                if (existing.data.length > 0) {
+                  const prFiles = await github.paginate(github.rest.pulls.listFiles, {
+                    ...consumer,
+                    pull_number: existing.data[0].number,
+                    per_page: 100,
+                  });
+                  if (prFiles.length > 0 && prFiles.some(file => file.filename !== 'AGENTS.md')) {
+                    summary.skipped.push(`${fullName}: existing synchronization PR changes files other than AGENTS.md`);
+                    continue;
+                  }
+                }
+
+                if (!branchExists) {
+                  const baseRef = await github.rest.git.getRef({ ...consumer, ref: `heads/${defaultBranch}` });
+                  await github.rest.git.createRef({
+                    ...consumer,
+                    ref: `refs/heads/${branchName}`,
+                    sha: baseRef.data.object.sha,
+                  });
+                }
+
+                const branchFile = await getFile(consumer, 'AGENTS.md', branchName);
+                if (contentOf(branchFile) !== canonical) {
+                  await github.rest.repos.createOrUpdateFileContents({
+                    ...consumer,
+                    path: 'AGENTS.md',
+                    message: commitMessage,
+                    content: Buffer.from(canonical, 'utf8').toString('base64'),
+                    branch: branchName,
+                    ...(branchFile?.data?.sha ? { sha: branchFile.data.sha } : {}),
+                  });
+                }
+
+                const body = [
+                  'This repository receives `AGENTS.md` from the central resume-engineering template.',
+                  '',
+                  `This PR updates the consumer repository to the canonical version from template commit \\`${templateSha}\\`.`,
+                  '',
+                  'Only `AGENTS.md` has been changed. Please review the instructions before merging.',
+                ].join('\n');
+
+                if (existing.data.length > 0) {
+                  await github.rest.pulls.update({ ...consumer, pull_number: existing.data[0].number, title: prTitle, body });
+                } else {
+                  await github.rest.pulls.create({ ...consumer, title: prTitle, head: branchName, base: defaultBranch, body });
+                }
+                summary.updated.push(fullName);
+              } catch (error) {
+                summary.skipped.push(`${fullName}: ${error.status || 'error'} ${error.message}`);
+              }
+            }
+
+            await core.summary
+              .addHeading('AGENTS.md Synchronization')
+              .addHeading('Updated', 2)
+              .addList(summary.updated.length ? summary.updated : ['None'])
+              .addHeading('Already up to date', 2)
+              .addList(summary.current.length ? summary.current : ['None'])
+              .addHeading('Skipped/failed', 2)
+              .addList(summary.skipped.length ? summary.skipped : ['None'])
+              .addRaw(`\nTemplate commit: ${templateSha}\n`)
+              .write();

@@ -978,3 +978,113 @@ Verified Result
 ```
 
 ```
+
+# 26. Windows LaTeX Setup
+
+The template can be compiled from a Windows terminal. MiKTeX provides `pdflatex`, `xelatex`, `lualatex`, and usually `latexmk`; Strawberry Perl provides the Perl runtime used by `latexmk` on Windows.
+
+Before installing anything, check whether the tools are already available:
+
+```powershell
+Get-Command latexmk,pdflatex,xelatex,lualatex,perl -ErrorAction SilentlyContinue
+Test-Path "C:\Program Files\MiKTeX\miktex\bin\x64"
+Test-Path "$env:LOCALAPPDATA\Programs\MiKTeX\miktex\bin\x64"
+Test-Path "C:\Strawberry\perl\bin\perl.exe"
+```
+
+If MiKTeX or Strawberry Perl is missing and Chocolatey is installed, install them from an elevated PowerShell terminal:
+
+```powershell
+choco install miktex.install -y
+choco install strawberryperl -y
+```
+
+If Chocolatey is unavailable, install MiKTeX and Strawberry Perl from their official websites, then reopen the terminal. Do not download installers from untrusted sources.
+
+After installation, verify the executables. If they are installed but not on `PATH`, use explicit paths or add the installation directories to the user's PATH manually; do not change the system PATH automatically from the resume workflow. Typical paths are:
+
+```text
+C:\Program Files\MiKTeX\miktex\bin\x64\
+%LOCALAPPDATA%\Programs\MiKTeX\miktex\bin\x64\
+C:\Strawberry\perl\bin\
+C:\Strawberry\c\bin\
+```
+
+Example explicit compilation:
+
+```powershell
+& "$env:LOCALAPPDATA\Programs\MiKTeX\miktex\bin\x64\pdflatex.exe" `
+  -interaction=nonstopmode -halt-on-error `
+  -output-directory=output resume.tex
+```
+
+Run the compiler from the repository root so `resume.tex` resolves the local `sections/` directory. Compile twice when cross-references or hyperlinks are present. Render the resulting PDF and inspect it before reporting completion.
+
+Never install packages or tools silently as part of ordinary resume tailoring. Report missing dependencies and ask for permission before using an installer or package manager.
+
+# 27. Cross-Platform Dependency Installation
+
+The workflow must work on Windows, macOS, and Linux. Detect dependencies before installing them, and never assume that a command is on `PATH`.
+
+## Detection
+
+Run the checks appropriate to the current shell:
+
+```text
+latexmk --version
+pdflatex --version
+xelatex --version
+lualatex --version
+perl --version
+```
+
+If a command is missing, install only the missing dependency. MiKTeX or TeX Live provides the LaTeX engines; `latexmk` may be included with the distribution or installed separately; Strawberry Perl is needed for `latexmk` on Windows, while Perl is commonly preinstalled on macOS and Linux.
+
+## Windows
+
+Preferred package-manager route when Chocolatey is available:
+
+```powershell
+choco install miktex.install -y
+choco install strawberryperl -y
+```
+
+If Chocolatey is unavailable, install MiKTeX and Strawberry Perl from their official websites. Reopen the terminal after installation and verify the commands again. Use explicit executable paths if the installers did not update `PATH`.
+
+## macOS
+
+With Homebrew:
+
+```bash
+brew install --cask mactex
+brew install latexmk
+```
+
+MacTeX includes the standard LaTeX engines. If `latexmk` is already included, the second command is unnecessary.
+
+## Debian or Ubuntu Linux
+
+```bash
+sudo apt update
+sudo apt install -y latexmk texlive-latex-base texlive-latex-recommended texlive-fonts-recommended texlive-latex-extra perl
+```
+
+## Fedora Linux
+
+```bash
+sudo dnf install -y latexmk texlive-scheme-basic texlive-collection-latexextra perl
+```
+
+## Arch Linux
+
+```bash
+sudo pacman -S --needed latexmk texlive-basic texlive-latexrecommended texlive-latexextra perl
+```
+
+If the distribution is not listed, use its official package manager to install TeX Live, `latexmk`, and Perl. Do not mix package managers unnecessarily.
+
+## Compilation rule
+
+Run compilation from the repository root so local `sections/` paths resolve correctly. Prefer `latexmk -pdf` when available; otherwise run the selected LaTeX engine twice when cross-references or hyperlinks are present. Render the PDF and visually inspect it after compilation.
+
+Do not automatically install dependencies during ordinary resume tailoring. Report what is missing and ask for permission before using `sudo`, an elevated shell, a package manager, or an installer.

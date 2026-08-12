@@ -1,0 +1,23 @@
+# LaTeX build artifacts
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.lof
+*.log
+*.lot
+*.out
+*.toc
+*.synctex.gz
+
+# Generated output and temporary QA files
+output/*
+!output/.gitkeep
+tmp/*
+!tmp/.gitkeep
+
+# Local editor and OS files
+.DS_Store
+Thumbs.db
+.vscode/

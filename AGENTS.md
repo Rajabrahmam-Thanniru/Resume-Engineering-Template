@@ -2,46 +2,69 @@
 
 ## Purpose
 
-This repository is a reusable AI-assisted resume engineering system. It is designed to turn a personal source resume into a factual master resume and then produce job-specific versions without contaminating the master source.
+This repository is a reusable AI-assisted resume engineering system.
 
-## Source of truth
+It supports two primary workflows:
 
-- The Master Resume is the canonical presentation layer.
-- `source/` contains the original resume or supporting source documents.
-- `knowledge/` is the factual evidence layer used for tailoring.
-- Never invent experience, technologies, metrics, responsibilities, companies, dates, certifications, awards, or achievements.
+1. **Master Resume Mode** — build, create, update, and improve a user's factual Master Resume.
+2. **Job Tailoring Mode** — use the Master Resume to create a job-specific resume without modifying the Master Resume.
 
-## Evidence classification
+The overall workflow is:
 
-For every important claim, distinguish:
+Source Resume
+↓
+Knowledge Base
+↓
+Master Resume
+↓
+Job Description
+↓
+Evidence Mapping
+↓
+Tailored Resume
+↓
+LaTeX Compilation
+↓
+PDF Verification
 
-- `VERIFIED`: explicitly supported by source documents or the user.
-- `INFERRED`: plausible but not explicitly confirmed; do not present as fact without confirmation.
-- `UNSUPPORTED`: absent, contradicted, or explicitly not used; do not claim.
+The system must prioritize factual accuracy over ATS optimization.
 
-## Job-specific workflow
+---
 
-1. Read and analyze the job description in `jobs/`.
-2. Extract required technologies, responsibilities, preferred skills, experience requirements, and important keywords.
-3. Map every relevant requirement to evidence in `knowledge/` and the Master Resume.
-4. Classify each requirement as supported, partially supported, inferred, or unsupported.
-5. Create the tailored source under `output/<job-name>/`.
-6. Tailor the summary, experience ordering, project emphasis, and skills ordering only where evidence supports the change.
-7. Never modify the Master Resume or its section files when tailoring a job description.
-8. Compile the tailored LaTeX document.
-9. Render the PDF to images and visually inspect clipping, overflow, spacing, wrapping, hierarchy, and readability.
-10. Report unsupported requirements and any verification limitations.
+# 1. Project Structure
 
-## Content safety
+The expected structure is:
 
-- Never fabricate metrics. If a source says an API was optimized, do not add a percentage or latency value unless provided.
-- Do not keyword-stuff. Use natural wording and only evidence-backed keywords.
-- Do not remove a strong factual achievement without explaining why.
-- Preserve dates, titles, companies, project functionality, and education details.
-
-## Build and Git safety
-
-- Keep generated artifacts in `output/` and temporary renderings in `tmp/`.
-- Keep Git changes focused and reviewable.
-- Do not initialize a remote, create a GitHub repository, change global Git identity, or push automatically.
-- Before any push, show the proposed remote and ask for confirmation.
+```text
+/
+├── AGENTS.md
+├── README.md
+├── .gitignore
+│
+├── source/
+│   └── original resume / supporting documents
+│
+├── knowledge/
+│   ├── experience.md
+│   ├── projects.md
+│   ├── skills.md
+│   └── achievements.md
+│
+├── jobs/
+│   └── job descriptions
+│
+├── sections/
+│   ├── summary.tex
+│   ├── experience.tex
+│   ├── projects.tex
+│   ├── skills.tex
+│   └── education.tex
+│
+├── resume.tex
+│
+├── output/
+│   └── <job-name>/
+│
+└── tmp/
+    └── temporary rendering/build files
+```
